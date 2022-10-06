@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xmlns="http://maven.apache.org/POM/4.0.0"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.springframework.samples</groupId>
   <artifactId>spring-petclinic</artifactId>
@@ -22,18 +22,49 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
     <vaadin.version>22.0.0</vaadin.version>
+
+    <aws.version>2.17.259</aws.version>
+    <aws-java-sdk-sqs.version>1.11.914</aws-java-sdk-sqs.version>
+    <docker-maven-plugin.version>0.40.2</docker-maven-plugin.version>
+    <localstack-version>1.1.0</localstack-version>
+    <testcontainers.version>1.17.5</testcontainers.version>
+
   </properties>
 
   <dependencyManagement>
-	<dependencies>
-		<dependency>
-			<groupId>com.vaadin</groupId>
-			<artifactId>vaadin-bom</artifactId>
-			<version>${vaadin.version}</version>
-			<type>pom</type>
-			<scope>import</scope>
-		</dependency>
-	</dependencies>
+    <dependencies>
+      <dependency>
+        <groupId>com.vaadin</groupId>
+        <artifactId>vaadin-bom</artifactId>
+        <version>${vaadin.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>bom</artifactId>
+        <version>${aws.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- V1 SDK required so that TestContainers, which hasn't been fully upgraded to use AWS SDK V2, can function -->
+      <dependency>
+        <groupId>com.amazonaws</groupId>
+        <artifactId>aws-java-sdk-sqs</artifactId>
+        <version>${aws-java-sdk-sqs.version}</version>
+        <scope>test</scope>
+      </dependency>
+
+
+      <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers-bom</artifactId>
+        <version>${testcontainers.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
   </dependencyManagement>
 
 
@@ -63,12 +94,12 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
       <scope>test</scope>
-        <exclusions>
-            <exclusion>
-                <groupId>org.junit.vintage</groupId>
-                <artifactId>junit-vintage-engine</artifactId>
-            </exclusion>
-        </exclusions>
+      <exclusions>
+        <exclusion>
+          <groupId>org.junit.vintage</groupId>
+          <artifactId>junit-vintage-engine</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <!-- Databases - Uses H2 by default -->
@@ -99,25 +130,130 @@
       <optional>true</optional>
     </dependency>
 
-	<!-- Vaadin dependencies -->
-	<dependency>
-		<groupId>com.vaadin</groupId>
-		<!-- Replace artifactId with vaadin-core to use only free components -->
-		<artifactId>vaadin-core</artifactId>
-	</dependency>
-	<dependency>
-		<groupId>com.vaadin</groupId>
-		<artifactId>vaadin-spring-boot-starter</artifactId>
-	</dependency>
-	<dependency>
-	    <groupId>com.vaadin</groupId>
-	    <artifactId>vaadin-testbench</artifactId>
-	    <scope>test</scope>
-	</dependency>
+    <!-- Vaadin dependencies -->
+    <dependency>
+      <groupId>com.vaadin</groupId>
+      <!-- Replace artifactId with vaadin-core to use only free components -->
+      <artifactId>vaadin-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.vaadin</groupId>
+      <artifactId>vaadin-spring-boot-starter</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.vaadin</groupId>
+      <artifactId>vaadin-testbench</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- Lombok dependencies -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+    </dependency>
+
+    <!-- AWS dependencies -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>sqs</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-sqs</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+
+    <!-- TestContainers dependencies -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>localstack</artifactId>
+      <scope>test</scope>
+    </dependency>
 
   </dependencies>
 
   <build>
+    <pluginManagement>
+      <plugins>
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-failsafe-plugin</artifactId>
+          <configuration>
+            <!-- According to https://almtools.ldschurch.org/fhconfluence/display/REP/Sonar, we need to add ${argLine} here -->
+            <argLine/>
+            <includes>
+              <include>**/*IT.java</include>
+            </includes>
+            <systemPropertyVariables>
+              <localstack.port>${on-demand-localstack-port}</localstack.port>
+            </systemPropertyVariables>
+          </configuration>
+        </plugin>
+
+        <!-- Initialize and start the on-demand Localstack instance before running tests and stop it afterwards -->
+        <plugin>
+          <groupId>io.fabric8</groupId>
+          <artifactId>docker-maven-plugin</artifactId>
+          <version>${docker-maven-plugin.version}</version>
+          <configuration>
+            <images>
+              <image>
+                <name>localstack/localstack:${localstack-version}</name>
+                <alias>on-demand-localstack</alias>
+                <run>
+                  <containerNamePattern>${project.artifactId}-%n-%i</containerNamePattern>
+                  <skip>${skipTests}</skip>
+                  <ports>
+                    <!-- http://dmp.fabric8.io/#start-port-mapping, maps an ephemeral port to the internal docker port of 4566. Similar to `-p 12345:4566` when launching a container by hand. -->
+                    <!-- Maven can then use this new exported "variable" ("on-demand-localstack-port") elsewhere, such as when defining which port to run CT against -->
+                    <port>on-demand-localstack-port:4566</port>
+                  </ports>
+                  <env>
+                    <!-- For details on available environment variables, see https://github.com/localstack/localstack#configurations -->
+                  </env>
+                  <wait>
+                    <log>^Ready\.$</log>
+                    <time>60000</time>
+                  </wait>
+                </run>
+              </image>
+            </images>
+          </configuration>
+          <executions>
+            <execution>
+              <id>prepare-on-demand-localstack</id>
+              <phase>pre-integration-test</phase>
+              <goals>
+                <goal>start</goal>
+              </goals>
+            </execution>
+            <execution>
+              <id>remove-on-demand-localstack</id>
+              <phase>post-integration-test</phase>
+              <goals>
+                <goal>stop</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+
     <plugins>
       <plugin>
         <groupId>org.springframework.boot</groupId>
@@ -179,6 +315,17 @@
 				</execution>
 			</executions>
 		</plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+      </plugin>
+
+      <plugin>
+        <groupId>io.fabric8</groupId>
+        <artifactId>docker-maven-plugin</artifactId>
+      </plugin>
+
     </plugins>
   </build>
 
@@ -228,72 +375,6 @@
   </pluginRepositories>
 
   <profiles>
-    <profile>
-      <id>m2e</id>
-      <activation>
-        <property>
-          <name>m2e.version</name>
-        </property>
-      </activation>
-      <build>
-        <pluginManagement>
-          <plugins>
-            <!-- This plugin's configuration is used to store Eclipse m2e settings
-   only. It has no influence on the Maven build itself. -->
-            <plugin>
-              <groupId>org.eclipse.m2e</groupId>
-              <artifactId>lifecycle-mapping</artifactId>
-              <version>1.0.0</version>
-              <configuration>
-                <lifecycleMappingMetadata>
-                  <pluginExecutions>
-                    <pluginExecution>
-                      <pluginExecutionFilter>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-checkstyle-plugin</artifactId>
-                        <versionRange>[1,)</versionRange>
-                        <goals>
-                          <goal>check</goal>
-                        </goals>
-                      </pluginExecutionFilter>
-                      <action>
-                        <ignore/>
-                      </action>
-                    </pluginExecution>
-                    <pluginExecution>
-                      <pluginExecutionFilter>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                        <versionRange>[1,)</versionRange>
-                        <goals>
-                          <goal>build-info</goal>
-                        </goals>
-                      </pluginExecutionFilter>
-                      <action>
-                        <ignore/>
-                      </action>
-                    </pluginExecution>
-                    <pluginExecution>
-                      <pluginExecutionFilter>
-                        <groupId>io.spring.javaformat</groupId>
-                        <artifactId>spring-javaformat-maven-plugin</artifactId>
-                        <versionRange>[0,)</versionRange>
-                        <goals>
-                          <goal>validate</goal>
-                        </goals>
-                      </pluginExecutionFilter>
-                      <action>
-                        <ignore/>
-                      </action>
-                    </pluginExecution>
-                  </pluginExecutions>
-                </lifecycleMappingMetadata>
-              </configuration>
-            </plugin>
-          </plugins>
-        </pluginManagement>
-      </build>
-    </profile>
 
     <profile>
             <!-- Production mode is activated using -Pproduction -->

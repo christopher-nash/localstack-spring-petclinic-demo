@@ -2,6 +2,7 @@ package org.springframework.samples.petclinic.ui.view.owner;
 
 import com.vaadin.flow.spring.annotation.RouteScope;
 import com.vaadin.flow.spring.annotation.SpringComponent;
+import org.springframework.samples.petclinic.backend.SqsPublisher;
 import org.springframework.samples.petclinic.backend.owner.Owner;
 import org.springframework.samples.petclinic.backend.owner.OwnerRepository;
 import org.springframework.samples.petclinic.backend.owner.Pet;
@@ -11,10 +12,14 @@ import org.springframework.samples.petclinic.backend.owner.PetRepository;
 @SpringComponent
 public class PetCreatePresenter extends PetFormPresenter<PetCreateView> {
 
+	private final SqsPublisher sqsPublisher;
+
     PetCreatePresenter(OwnerRepository ownerRepository,
-            PetRepository petRepository) {
+					   PetRepository petRepository,
+					   SqsPublisher sqsPublisher) {
         super(ownerRepository, petRepository);
-    }
+		this.sqsPublisher = sqsPublisher;
+	}
 
     @Override
     public void initModel(Integer ownerId, Integer petId) {
@@ -36,6 +41,14 @@ public class PetCreatePresenter extends PetFormPresenter<PetCreateView> {
         owner.addPet(pet);
 
         petRepository.save(pet);
+
+		// ----------------------- SEND SQS MESSAGE -----------------------
+		sqsPublisher.publish(String.format("{" +
+												  "\"action\"=\"added\"," +
+												  "\"petName\"=\"%s\"" +
+												  "}",
+										   pet.getName()));
+		// ----------------------- SEND SQS MESSAGE -----------------------
 
         view.navigateToOwnerDetails(model.getOwnerId());
     }
