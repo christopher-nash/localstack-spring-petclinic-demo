@@ -15,7 +15,9 @@ Two versions of testing against LocalStack are presented:
 
 Each presents interesting tradeoffs. For instance, the docker-maven-plugin approach allows a single container to be
 launched and used for all test classes, while the TestContainers approach launches a new container for each class. One
-is managed via XML, the other Java code. And dozens more comparisons could be made.
+is managed via XML, the other Java code. And dozens more comparisons could be made. It's important to note that you
+wouldn't normally have both approaches in the same project - try and experience both, but stick with just one in your
+own projects.
 
 To find the relevant classes and files, search for "SQS" and "LocalStack" within the project. Alternatively, view commit https://github.com/christopher-nash/localstack-spring-petclinic-demo/commit/b4f650a0dea5355552e08ab5b302ec2a4c3f222a
 which contains all modified classes and files demonstrating LocalStack.
