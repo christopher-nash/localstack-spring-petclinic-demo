@@ -17,9 +17,8 @@ Each presents interesting tradeoffs. For instance, the docker-maven-plugin appro
 launched and used for all test classes, while the TestContainers approach launches a new container for each class. One
 is managed via XML, the other Java code. And dozens more comparisons could be made.
 
-To find the relevant classes, search for "SQS" and "LocalStack" within the project. This will lead you to thee relevant
-classes. Alternatively, view commit https://github.com/christopher-nash/localstack-spring-petclinic-demo/commit/b4f650a0dea5355552e08ab5b302ec2a4c3f222a
-which contains all modified classes demonstrating LocalStack.
+To find the relevant classes and files, search for "SQS" and "LocalStack" within the project. Alternatively, view commit https://github.com/christopher-nash/localstack-spring-petclinic-demo/commit/b4f650a0dea5355552e08ab5b302ec2a4c3f222a
+which contains all modified classes and files demonstrating LocalStack.
 
 Additional information about the [Spring PetClinic](https://spring-petclinic.github.io/) project is available at their
 [GitHub organization](https://github.com/spring-petclinic).
